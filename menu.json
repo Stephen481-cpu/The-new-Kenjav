@@ -1,0 +1,10 @@
+[
+  { "id": "m1", "cat": "mandazi", "name": "Classic Mandazi (3 pcs)", "desc": "Lightly sweet, cardamom-scented, fried to order.", "price": 60 },
+  { "id": "m2", "cat": "mandazi", "name": "Coconut Mandazi (3 pcs)", "desc": "Made with coconut milk — soft, rich, and fragrant.", "price": 90 },
+  { "id": "m3", "cat": "mandazi", "name": "Sugar-Dusted Mandazi (3 pcs)", "desc": "The classic recipe, finished with a dusting of sugar.", "price": 75 },
+  { "id": "m4", "cat": "mandazi", "name": "Mini Mandazi Bites (dozen)", "desc": "Bite-sized — great for sharing or the school run.", "price": 150 },
+  { "id": "m5", "cat": "sides", "name": "Kenyan Chai", "desc": "Spiced milk tea, brewed fresh all day.", "price": 50 },
+  { "id": "m6", "cat": "sides", "name": "Black Coffee", "desc": "Simple, strong, no frills.", "price": 50 },
+  { "id": "m7", "cat": "bakery", "name": "Banana Bread (slice)", "desc": "Moist, made with overripe bananas, no nuts.", "price": 80 },
+  { "id": "m8", "cat": "bakery", "name": "Glazed Doughnut", "desc": "Soft dough with a simple sugar glaze.", "price": 40 }
+]

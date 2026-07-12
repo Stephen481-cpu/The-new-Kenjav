@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KENJAV — Admin</title>
+<style>
+  :root{ --ink:#241812; --cream:#FBF3E6; --paper:#fff; --line:#e7ddcf; --gold:#D9A441; --chili:#C1481F; }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--cream);color:var(--ink);margin:0;padding:0 0 60px;}
+  header{background:var(--ink);color:var(--cream);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;}
+  header h1{font-size:18px;margin:0;}
+  header button{background:none;border:1px solid rgba(255,255,255,.3);color:var(--cream);padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;}
+  main{max-width:900px;margin:24px auto;padding:0 20px;}
+  .gate{max-width:360px;margin:80px auto;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:28px;text-align:center;}
+  .gate input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin:14px 0;font-size:14px;}
+  .gate button{background:var(--ink);color:var(--cream);border:none;padding:10px 20px;border-radius:20px;font-weight:700;cursor:pointer;}
+  .gate p.err{color:var(--chili);font-size:13px;min-height:1em;}
+  section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:24px;}
+  section h2{font-size:16px;margin:0 0 14px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:#8a7a68;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;}
+  select{padding:4px 6px;border-radius:6px;border:1px solid var(--line);font-size:13px;}
+  .empty{color:#8a7a68;font-size:13.5px;padding:12px 0;}
+  .offer-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .offer-row input[type=text]{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;}
+  .offer-row label{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;}
+  .row-actions{display:flex;gap:8px;margin-top:14px;}
+  .row-actions button{background:var(--gold);border:none;padding:8px 16px;border-radius:20px;font-weight:700;cursor:pointer;font-size:13px;}
+  .row-actions button.secondary{background:none;border:1px solid var(--line);}
+  .save-msg{font-size:12.5px;color:#6a9a55;margin-left:8px;}
+  .status-new{color:var(--chili);font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <p style="font-weight:800;font-size:18px;margin-bottom:4px;">KENJAV Admin</p>
+  <p style="font-size:13px;color:#8a7a68;">Enter the admin key to continue.</p>
+  <input type="password" id="keyInput" placeholder="Admin key">
+  <p class="err" id="gateErr"></p>
+  <button id="gateBtn">Enter</button>
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <h1>KENJAV Admin</h1>
+    <button id="logoutBtn">Change key</button>
+  </header>
+  <main>
+    <section>
+      <h2>Orders</h2>
+      <div id="ordersWrap"><p class="empty">Loading…</p></div>
+    </section>
+
+    <section>
+      <h2>Offers</h2>
+      <div id="offersWrap"><p class="empty">Loading…</p></div>
+      <div class="row-actions">
+        <button id="addOfferBtn" class="secondary" type="button">+ Add offer</button>
+        <button id="saveOffersBtn" type="button">Save offers</button>
+        <span class="save-msg" id="offersSaveMsg"></span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const API_BASE = ''; // same-origin: admin.html is served by the same backend
+  let ADMIN_KEY = localStorage.getItem('kenjav_admin_key') || '';
+
+  const gate = document.getElementById('gate');
+  const app = document.getElementById('app');
+
+  async function api(path, options = {}) {
+    const res = await fetch(API_BASE + path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY, ...(options.headers||{}) }
+    });
+    if (res.status === 401) throw new Error('unauthorized');
+    if (!res.ok) throw new Error('request failed: ' + res.status);
+    return res.json();
+  }
+
+  async function tryEnter() {
+    try {
+      await api('/api/orders');
+      localStorage.setItem('kenjav_admin_key', ADMIN_KEY);
+      gate.style.display = 'none';
+      app.style.display = 'block';
+      loadOrders();
+      loadOffers();
+    } catch (e) {
+      document.getElementById('gateErr').textContent = 'Wrong key, or the server is unreachable.';
+    }
+  }
+
+  document.getElementById('gateBtn').addEventListener('click', () => {
+    ADMIN_KEY = document.getElementById('keyInput').value.trim();
+    tryEnter();
+  });
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('kenjav_admin_key');
+    location.reload();
+  });
+
+  if (ADMIN_KEY) tryEnter();
+
+  async function loadOrders() {
+    const wrap = document.getElementById('ordersWrap');
+    try {
+      const orders = await api('/api/orders');
+      if (orders.length === 0) { wrap.innerHTML = '<p class="empty">No orders yet.</p>'; return; }
+      const rows = orders.slice().reverse().map(o => `
+        <tr>
+          <td>${new Date(o.createdAt).toLocaleString()}</td>
+          <td>${o.name}<br><span style="color:#8a7a68;">${o.phone}</span></td>
+          <td>${o.items.map(i => `${i.qty}x ${i.name}`).join('<br>')}</td>
+          <td>KSh ${o.total}</td>
+          <td>${o.fulfillment === 'delivery' ? 'Delivery: ' + o.address : 'Pickup'}</td>
+          <td>
+            <select data-order="${o.id}">
+              ${['new','preparing','ready','delivered','cancelled'].map(s =>
+                `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`).join('');
+      wrap.innerHTML = `<table><thead><tr><th>Time</th><th>Customer</th><th>Items</th><th>Total</th><th>Fulfillment</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+      wrap.querySelectorAll('select[data-order]').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          await api(`/api/orders/${sel.dataset.order}`, { method: 'PATCH', body: JSON.stringify({ status: sel.value }) });
+        });
+      });
+    } catch (e) {
+      wrap.innerHTML = '<p class="empty">Could not load orders.</p>';
+    }
+  }
+
+  let offersCache = [];
+  async function loadOffers() {
+    const wrap = document.getElementById('offersWrap');
+    try {
+      offersCache = await api('/api/offers');
+      renderOffers();
+    } catch (e) {
+      wrap.innerHTML = '<p class="empty">Could not load offers.</p>';
+    }
+  }
+  function renderOffers() {
+    const wrap = document.getElementById('offersWrap');
+    if (offersCache.length === 0) { wrap.innerHTML = '<p class="empty">No offers yet — add one below.</p>'; return; }
+    wrap.innerHTML = offersCache.map((o, i) => `
+      <div class="offer-row">
+        <label><input type="checkbox" data-idx="${i}" data-field="active" ${o.active ? 'checked' : ''}> Active</label>
+        <input type="text" data-idx="${i}" data-field="text" value="${o.text.replace(/"/g,'&quot;')}">
+      </div>`).join('');
+    wrap.querySelectorAll('[data-field]').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = Number(el.dataset.idx);
+        const field = el.dataset.field;
+        offersCache[idx][field] = field === 'active' ? el.checked : el.value;
+      });
+    });
+  }
+  document.getElementById('addOfferBtn').addEventListener('click', () => {
+    offersCache.push({ id: 'o' + Date.now(), text: 'New offer — edit me', active: false });
+    renderOffers();
+  });
+  document.getElementById('saveOffersBtn').addEventListener('click', async () => {
+    await api('/api/offers', { method: 'PUT', body: JSON.stringify(offersCache) });
+    const msg = document.getElementById('offersSaveMsg');
+    msg.textContent = 'Saved ✓';
+    setTimeout(() => msg.textContent = '', 2000);
+  });
+</script>
+</body>
+</html>
